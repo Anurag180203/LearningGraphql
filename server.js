@@ -29,10 +29,6 @@ const books = [
 	{ id: 8, name: 'Beyond the Shadows', authorId: 3 }
 ]
 
-app.use('/graphql', expressGraphQL({
-    schema: schema,
-    graphiql: true
-}))
 
 // const schema = new GraphQLSchema({
 //     query: new GraphQLObjectType({
@@ -49,13 +45,32 @@ const BookType = new GraphQLObjectType({
     name: 'Book',
     description: 'This represents a book written by an author',
     fields: () => ({
-        id: { type: GraphQLNonNull(GraphQLInt)},
-        name: { type: GraphQLString },
-        authorId: { type: GraphQLString }
+        id: { type: GraphQLNonNull(GraphQLInt) },
+        name: { type: GraphQLNonNull(GraphQLString) },
+        authorId: { type: GraphQLNonNull(GraphQLInt) },
+        author: {
+            type: AuthorType,
+            resolve: (book) => {
+                return authors.find(author => author.id === book.authorId)
+            }
+        }
     })
 });
 
-const AuthorType = new GraphQLObjectType({});
+const AuthorType = new GraphQLObjectType({
+    name: 'Author',
+    description: 'This represents an author of a book',
+    fields: () => ({
+        id: { type: GraphQLNonNull(GraphQLInt) },
+        name: { type: GraphQLNonNull(GraphQLString) },
+        books: {
+            type: new GraphQLList(BookType),
+            resolve: (author) => {
+                return books.filter(book => book.authorId === author.id)
+            }
+        }
+    })
+});
 
 const RootQueryType = new GraphQLObjectType({
     name: 'Query',
@@ -65,9 +80,23 @@ const RootQueryType = new GraphQLObjectType({
             type: new GraphQLList(BookType),
             description: 'List of All Books',
             resolve: () => books
+        },
+        authors: {
+            type: new GraphQLList(AuthorType),
+            description: 'List of All Authors',
+            resolve: () => authors
         }
     })
 });
+
+const schema = new GraphQLSchema({
+    query: RootQueryType
+})
+
+app.use('/graphql', expressGraphQL({
+    schema: schema,
+    graphiql: true
+}))
 
 
 app.listen(3000, () => {
